@@ -420,12 +420,13 @@ public class ECPrivateKey: CustomStringConvertible {
     ///   - cofactor: Use cofactor version - *false* is default
     /// - Returns: A byte array which is the shared secret key
     /// - Throws: An exception if *this* and *pubKey* do not belong to the same domain or *length* is negative
-    public func keyAgreement(pubKey: ECPublicKey, length: Int, md: MessageDigestAlgorithm, sharedInfo: Bytes, cofactor: Bool = false) throws -> Bytes {
+    public func keyAgreement(pubKey: ECPublicKey, length: Int64, md: MessageDigestAlgorithm, sharedInfo: Bytes, cofactor: Bool = false) throws -> Bytes {
         if self.domain != pubKey.domain {
             throw ECException.keyAgreementParameter
         }
         let mda = MessageDigest(md)
-        if length >= mda.digestLength * 0xffffffff || length < 0 {
+        let word: UInt64 = 0xffffffff
+        if length >= Int64(UInt64(mda.digestLength) * word) || length < 0 {
             throw ECException.keyAgreementParameter
         }
         var Z = try self.domain.multiplyPoint(pubKey.w, (cofactor ? self.domain.cofactor : 1) * self.s).x.asMagnitudeBytes()
@@ -435,7 +436,7 @@ public class ECPrivateKey: CustomStringConvertible {
 
         var k: Bytes = []
         var counter: Bytes = [0, 0, 0, 1]
-        let n = length == 0 ? 0 : (length - 1) / mda.digestLength + 1
+        let n: Int64 = length == 0 ? 0 : (length - 1) / Int64(mda.digestLength) + 1
         for _ in 0 ..< n {
             mda.update(Z)
             mda.update(counter)
@@ -452,7 +453,7 @@ public class ECPrivateKey: CustomStringConvertible {
                 }
             }
         }
-        return Bytes(k[0 ..< length])
+        return Bytes(k[0 ..< Int(length)])
     }
 
 }
